@@ -4,11 +4,24 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 
 namespace HostingFunctionsApp
 {
     public static class ServeStaticFiles
     {
+
+        [FunctionName("status")]
+        public static string Status(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "status")] HttpRequest req, ExecutionContext context)
+        {
+            string root = context.FunctionAppDirectory;
+            var json = File.ReadAllText($"{root}/SomeSettings.json");
+            dynamic jObject = JObject.Parse(json);
+            var version = jObject.version;
+            return $"live-{version}";
+        }
+
         // Serves static files for client UI
         [FunctionName("ui")]
         public static IActionResult Run(
@@ -19,10 +32,12 @@ namespace HostingFunctionsApp
             ExecutionContext context
         )
         {
-            string root = context.FunctionAppDirectory;
+            var TrimString = "octo-onboarding";
+            string functionRoot = context.FunctionAppDirectory;
+            var root = functionRoot.Substring(0, functionRoot.LastIndexOf(TrimString) + 1 + TrimString.Length);
 
             // Sanitizing input, just in case
-            string path = $"/api/ui/{Path.GetFileName(p1)}";
+            string path = $"{Path.GetFileName(p1)}";
             path += p2 != null ? $"/{Path.GetFileName(p2)}" : "";
             path += p3 != null ? $"/{Path.GetFileName(p3)}" : "";
 
@@ -34,17 +49,18 @@ namespace HostingFunctionsApp
                     new NotFoundResult();
             }
             // Returning index.html by default, to support client routing
-            return new FileStreamResult(File.OpenRead($"{root}/api/ui/index.html"), "text/html; charset=UTF-8");
+            var test = File.ReadAllText($"{root}/build/index.html");
+            return new FileStreamResult(File.OpenRead($"{root}/build/index.html"), "text/html; charset=UTF-8");
         }
 
         private static readonly string[][] FileMap = new string[][]
         {
-        new [] {"/api/ui/static/css/", "text/css; charset=utf-8"},
-        new [] {"/api/ui/static/media/", "image/svg+xml; charset=UTF-8"},
-        new [] {"/api/ui/static/js/", "application/javascript; charset=UTF-8"},
-        new [] {"/api/ui/manifest.json", "application/json; charset=UTF-8"},
-        new [] {"/api/ui/service-worker.js", "application/javascript; charset=UTF-8"},
-        new [] {"/api/ui/favicon.ico", "image/x-icon"}
+        new [] { "build/static/css/", "text/css; charset=utf-8"},
+        new [] { "build/static/media/", "image/svg+xml; charset=UTF-8"},
+        new [] { "build/static/js/", "application/javascript; charset=UTF-8"},
+        new [] { "build/manifest.json", "application/json; charset=UTF-8"},
+        new [] { "build/service-worker.js", "application/javascript; charset=UTF-8"},
+        new [] { "build/favicon.ico", "image/x-icon"}
         };
     }
 }
